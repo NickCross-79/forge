@@ -1,0 +1,54 @@
+# Development and evaluation loop for forge.
+#
+#   docker compose up --build     start the dashboard on http://127.0.0.1:7777
+#   docker compose run --rm forge run examples/basic.yml
+#
+# This is a convenience, not a requirement: `make build && ./bin/forge serve`
+# does the same thing without Docker.
+
+services:
+  forge:
+    build:
+      context: .
+      args:
+        VERSION: compose
+    # Published on loopback only. The API can start pipelines, which means it
+    # can run shell commands, so it must not be reachable from the network
+    # without a token — see FORGE_TOKEN below and docs/security.md.
+    ports:
+      - "127.0.0.1:7777:7777"
+    environment:
+      # Binding to 0.0.0.0 inside the container is safe because the published
+      # port above is bound to loopback on the host.
+      FORGE_HOST: 0.0.0.0
+      FORGE_PORT: "7777"
+      # Set a token if you ever publish this port beyond loopback:
+      # FORGE_TOKEN: change-me
+    volumes:
+      # The project forge builds. Mounted read-write because jobs write into
+      # their own workspaces under .forge/.
+      - .:/workspace
+      # Keep the database, logs and artifacts in a named volume so run history
+      # survives `docker compose down` and does not litter the host tree.
+      - forge-state:/workspace/.forge
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7777/api/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+    # To let pipelines use `image:` (the Docker executor) from inside this
+    # container, mount the host's Docker socket:
+    #
+    #   volumes:
+    #     - /var/run/docker.sock:/var/run/docker.sock
+    #
+    # Understand what that grants before enabling it: access to the socket is
+    # equivalent to root on the host, because a container can be started with
+    # any mount and any privileges. On a personal machine running your own
+    # pipelines that may be an acceptable trade; do not do it on a shared host.
+
+volumes:
+  forge-state:

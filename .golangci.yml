@@ -1,0 +1,62 @@
+# golangci-lint configuration for forge.
+#
+# The selection favours correctness and security checks over stylistic ones. The
+# project executes shell commands and serves files, so gosec earns its place.
+
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck      # unchecked errors
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - bodyclose     # leaked HTTP response bodies
+    - gosec         # this project runs shells and serves files
+    - misspell
+    - unconvert
+    - revive        # exported-symbol docs and general style
+    - nilerr        # returning nil after a non-nil error
+    - errorlint     # %w and errors.As/Is misuse
+
+  settings:
+    errcheck:
+      exclude-functions:
+        # Writes to the terminal. If stdout is gone there is nothing useful a
+        # CLI can do about it, and threading the error through every print call
+        # would obscure the code it runs through.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*text/tabwriter.Writer).Flush
+    revive:
+      rules:
+        - name: exported
+          arguments: ["disableStutteringCheck"]
+        - name: package-comments
+    gosec:
+      excludes:
+        # G204 flags "subprocess launched with a variable". Running
+        # user-supplied commands is the entire purpose of an executor; the
+        # boundary is documented in docs/security.md and enforced by the
+        # workspace and path checks instead.
+        - G204
+
+  exclusions:
+    rules:
+      # Tests deliberately construct hostile paths, read fixtures and ignore
+      # errors on cleanup.
+      - path: _test\.go
+        linters: [gosec, errcheck, bodyclose]
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

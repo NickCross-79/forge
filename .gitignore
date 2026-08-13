@@ -1,0 +1,25 @@
+# Build output. These are anchored to the repository root on purpose: a bare
+# `forge` would also match the cmd/forge/ source directory.
+/bin/
+/dist/
+/forge
+
+# forge's own local state
+.forge/
+
+# Frontend
+node_modules/
+web/node_modules/
+# The dashboard bundle is a build artifact, embedded at compile time by `make web`.
+web/dist/*
+!web/dist/.gitkeep
+
+# Editors and OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Secrets must never be committed.
+secrets.env
+*.env.local

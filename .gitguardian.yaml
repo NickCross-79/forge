@@ -1,0 +1,34 @@
+# GitGuardian configuration.
+#
+# forge stores no credentials of its own: secrets are read at runtime from
+# .forge/secrets.env, which is gitignored and never committed. Every
+# credential-shaped literal in this repository is a test fixture or a
+# documentation placeholder.
+#
+# Fixtures are named `example-not-a-real-*` and declared as constants so their
+# nature is obvious in the source. The paths below are listed so that adding a
+# new fixture does not raise an incident.
+
+version: 2
+
+secret:
+  ignored-paths:
+    # Test fixtures: values registered as "secrets" so the redaction and auth
+    # paths can be asserted. None is a real credential.
+    - "**/*_test.go"
+    # Documentation and examples showing the shape of a secrets file.
+    - "examples/secrets.yml"
+    - "docs/**"
+    - "README.md"
+    # The scaffolding template written by `forge init`, which contains only a
+    # commented placeholder.
+    - "internal/cli/commands_pipeline.go"
+
+  # Values that are placeholders by construction.
+  ignored-matches:
+    - name: fixture and placeholder values
+      match: "example-not-a-real-secret"
+    - name: fixture and placeholder values
+      match: "example-not-a-real-token"
+    - name: fixture and placeholder values
+      match: "example-not-a-real-value"
