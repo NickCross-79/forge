@@ -1,0 +1,42 @@
+# The pipeline from the forge README: three stages, artifacts flowing forward.
+#
+#   forge run examples/basic.yml
+
+name: example
+
+variables:
+  NODE_ENV: test
+
+stages:
+  - build
+  - test
+  - package
+
+jobs:
+  build:
+    stage: build
+    commands:
+      - echo "Building"
+      - mkdir -p dist
+      - echo "hello" > dist/output.txt
+    artifacts:
+      paths:
+        - dist/
+
+  test:
+    stage: test
+    needs:
+      - build
+    commands:
+      - echo "Running tests"
+      # dist/ was produced by `build` and is restored into this job's workspace
+      # because `test` needs it.
+      - test -f dist/output.txt
+      - cat dist/output.txt
+
+  package:
+    stage: package
+    needs:
+      - test
+    commands:
+      - echo "Packaging"

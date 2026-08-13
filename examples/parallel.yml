@@ -1,0 +1,67 @@
+# Fan-out and fan-in: independent jobs run concurrently, then a join waits for
+# all of them. Watch the run in the dashboard to see the middle wave overlap.
+#
+#   forge run examples/parallel.yml -j 4
+#
+# Note the single quotes around commands containing ": " — in YAML an unquoted
+# colon-space inside a list item turns it into a mapping. See
+# docs/pipeline-reference.md.
+
+name: parallel
+
+stages:
+  - prepare
+  - verify
+  - report
+
+jobs:
+  prepare:
+    stage: prepare
+    commands:
+      - echo "Preparing the workspace"
+      - mkdir -p reports
+      - echo "shared input" > reports/input.txt
+    artifacts:
+      paths:
+        - reports/
+
+  lint:
+    stage: verify
+    needs: [prepare]
+    commands:
+      - echo "Linting"
+      - sleep 1
+      - 'echo "lint: clean" > reports/lint.txt'
+    artifacts:
+      paths: [reports/lint.txt]
+
+  unit:
+    stage: verify
+    needs: [prepare]
+    commands:
+      - echo "Running unit tests"
+      - sleep 1
+      - 'echo "unit: 42 passed" > reports/unit.txt'
+    artifacts:
+      paths: [reports/unit.txt]
+
+  integration:
+    stage: verify
+    needs: [prepare]
+    commands:
+      - echo "Running integration tests"
+      - sleep 1
+      - 'echo "integration: 7 passed" > reports/integration.txt'
+    artifacts:
+      paths: [reports/integration.txt]
+
+  report:
+    stage: report
+    # Every artifact from every `needs` job is restored here, so the report job
+    # sees all three result files even though they were produced in parallel.
+    needs: [lint, unit, integration]
+    commands:
+      - echo "Collecting results"
+      - cat reports/lint.txt reports/unit.txt reports/integration.txt
+    artifacts:
+      paths: [reports/]

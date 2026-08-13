@@ -1,0 +1,55 @@
+# Conditions and manual gates.
+#
+#   forge run examples/conditional.yml
+#   forge run examples/conditional.yml -e DEPLOY_ENV=production
+#   forge run examples/conditional.yml --approve deploy
+#
+# Manual jobs are skipped by `forge run` unless approved, because a terminal run
+# has nobody to approve them. From the dashboard they wait for a click instead.
+
+name: conditional
+
+variables:
+  DEPLOY_ENV: staging
+
+stages:
+  - build
+  - deploy
+
+jobs:
+  build:
+    stage: build
+    commands:
+      - echo "Building for ${DEPLOY_ENV}"
+
+  deploy-staging:
+    stage: deploy
+    needs: [build]
+    if: $DEPLOY_ENV == "staging"
+    commands:
+      - echo "Deploying to staging"
+
+  deploy:
+    stage: deploy
+    needs: [build]
+    # Both must pass: the condition, and a human.
+    if: $DEPLOY_ENV == "production"
+    when: manual
+    commands:
+      - echo "Deploying to production"
+
+  # forge sets CI=true in every job, so this always runs.
+  in-ci:
+    stage: deploy
+    needs: [build]
+    if: $CI
+    commands:
+      - 'echo "running under forge, attempt ${FORGE_ATTEMPT} of run #${FORGE_RUN_NUMBER}"'
+
+  # Kept in the file but switched off.
+  disabled:
+    stage: deploy
+    needs: [build]
+    when: never
+    commands:
+      - echo "never runs"
