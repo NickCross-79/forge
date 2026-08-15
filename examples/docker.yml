@@ -1,0 +1,52 @@
+# Container execution.
+#
+#   forge run examples/docker.yml
+#
+# Requires a running Docker daemon. A job that names an `image` uses the Docker
+# executor automatically; jobs without one keep running locally, so a pipeline
+# can mix both.
+#
+# Each container gets the job's workspace bind-mounted at /forge/workspace and
+# runs as your uid:gid, so files it writes are owned by you rather than by root.
+
+name: docker
+
+stages:
+  - build
+  - test
+
+jobs:
+  # Runs on the host: no image, no daemon needed.
+  prepare:
+    stage: build
+    commands:
+      - echo "preparing on the host"
+      - mkdir -p src
+      - printf 'print("hello from python")\n' > src/main.py
+    artifacts:
+      paths: [src/]
+
+  # Runs in a container.
+  python:
+    stage: test
+    needs: [prepare]
+    image: python:3.12-alpine
+    commands:
+      - python --version
+      - python src/main.py
+
+  node:
+    stage: test
+    needs: [prepare]
+    image: node:22-alpine
+    commands:
+      - node --version
+      - node -e "console.log('hello from node')"
+
+  # An explicit executor overrides the image-implies-docker default.
+  host-only:
+    stage: test
+    needs: [prepare]
+    executor: local
+    commands:
+      - echo "forced back onto the host"
