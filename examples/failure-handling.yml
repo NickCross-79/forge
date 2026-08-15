@@ -1,0 +1,73 @@
+# How forge behaves when things go wrong: retries, tolerated failures,
+# conditional cleanup, and skipped dependents.
+#
+#   forge run examples/failure-handling.yml
+#
+# This pipeline is expected to FAIL. That is the point — it demonstrates the
+# failure paths, and `forge run` exits 1.
+
+name: failure-handling
+
+stages:
+  - flaky
+  - main
+  - cleanup
+
+jobs:
+  # Fails twice, then succeeds. Backoff doubles between attempts.
+  eventually-succeeds:
+    stage: flaky
+    commands:
+      - |
+        if [ "${FORGE_ATTEMPT}" -lt 3 ]; then
+          echo "attempt ${FORGE_ATTEMPT}: failing on purpose"
+          exit 1
+        fi
+        echo "attempt ${FORGE_ATTEMPT}: succeeded"
+    retry:
+      max: 2
+      backoff: 500ms
+
+  # Fails, but the run carries on and its dependents still execute.
+  tolerated:
+    stage: flaky
+    commands:
+      - echo "this failure is tolerated"
+      - exit 3
+    allow_failure: true
+
+  # Fails for real. Everything downstream of it is skipped.
+  broken:
+    stage: main
+    needs: [eventually-succeeds]
+    commands:
+      - echo "about to fail"
+      - echo "diagnostics" > crash.log
+      - exit 1
+    artifacts:
+      # Collect the evidence precisely because the job failed.
+      paths: [crash.log]
+      when: on_failure
+
+  # Never runs: its dependency failed.
+  downstream:
+    stage: main
+    needs: [broken]
+    commands:
+      - echo "you will not see this"
+
+  # Runs regardless of what happened above.
+  always-cleanup:
+    stage: cleanup
+    needs: [broken]
+    when: always
+    commands:
+      - echo "cleaning up after the run"
+
+  # Runs only because something failed.
+  notify-failure:
+    stage: cleanup
+    needs: [broken]
+    when: on_failure
+    commands:
+      - echo "would send a failure notification here"
